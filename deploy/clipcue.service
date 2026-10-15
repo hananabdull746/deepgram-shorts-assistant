@@ -1,0 +1,26 @@
+[Unit]
+Description=ClipCue Deepgram Shorts assistant
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=clipcue
+Group=clipcue
+WorkingDirectory=/opt/clipcue
+EnvironmentFile=/etc/clipcue/clipcue.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/clipcue/venv/bin/python -m app.run
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/clipcue /var/log/clipcue
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

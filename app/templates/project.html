@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block head %}{% if refresh %}<meta http-equiv="refresh" content="{{ refresh }}">{% endif %}{% endblock %}
+{% block content %}
+<div class="backline"><a href="/">← Project desk</a><span class="status {{ project.status|replace('_','-') }}">{{ project.status|replace('_',' ') }}</span></div>
+<header class="page-heading project-heading"><div><p class="eyebrow">SOURCE FILE</p><h1>{{ project.title }}</h1><p class="muted">{{ project.original_name }}{% if project.duration %} · {{ project.duration|duration }}{% endif %}</p></div></header>
+{% if message %}<div class="notice success">{{ message }}</div>{% endif %}
+{% if error %}<div class="notice error">{{ error }}</div>{% endif %}
+{% if project.error %}<div class="notice error">{{ project.error }}</div>{% endif %}
+<section class="source-preview-panel"><div class="section-head"><div><p class="eyebrow">ORIGINAL SOURCE</p><h2>Watch and locate the moment</h2></div></div><video class="source-preview" controls preload="metadata"><source src="/projects/{{ project.id }}/source"></video></section>
+{% if project.status in ['queued','transcribing','waiting_callback'] %}
+<section class="progress-panel"><div class="progress-line"><span></span></div><p><strong>{% if project.status=='queued' %}Waiting for the single worker slot.{% elif project.status=='waiting_callback' %}Deepgram is processing the transcript; this page will refresh.{% else %}Extracting audio and transcribing with Deepgram.{% endif %}</strong></p><p class="muted small">You can leave this page. The job state is saved.</p></section>
+{% endif %}
+{% if project.status=='failed' and not project.transcript_json %}
+<form method="post" action="/projects/{{ project.id }}/retry"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button primary">Retry transcription</button><p class="small muted">Retrying may incur another Deepgram charge if the previous request was accepted.</p></form>
+{% endif %}
+{% if transcript %}
+<section class="summary-bar"><div><p class="eyebrow">TRANSCRIPT READY</p><strong>{{ clips|length }} candidate moments</strong><span class="muted"> · {{ project.duration|duration }}</span></div><p class="small muted">Suggestions are heuristic starting points—not automatic edits. Adjust each cut before rendering.</p></section>
+<div class="workspace-columns">
+<section class="moments-pane"><div class="section-head"><div><p class="eyebrow">EDITABLE SUGGESTIONS</p><h2>Candidate moments</h2></div><span class="count">{{ clips|length }} / {{ max_clips }}</span></div>
+{% for clip in clips %}
+<article class="clip-card"><div class="clip-top"><div><span class="score">{{ clip.score }}<small> score</small></span><span class="timecode">{{ clip.start_seconds|timecode }} — {{ clip.end_seconds|timecode }}</span></div><span class="status {{ clip.status }}">{{ clip.status }}</span></div>
+<form method="post" action="/clips/{{ clip.id }}/render" class="clip-form"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Working title<input name="title" maxlength="120" value="{{ clip.title }}"></label><div class="time-fields"><label>Start (sec)<input name="start_seconds" type="number" step="0.1" min="0" value="{{ '%.2f'|format(clip.start_seconds) }}"></label><label>End (sec)<input name="end_seconds" type="number" step="0.1" min="0" value="{{ '%.2f'|format(clip.end_seconds) }}"></label></div><p class="transcript-excerpt">{{ clip.transcript }}</p>
+{% if clip.error %}<p class="row-error">{{ clip.error }}</p>{% endif %}
+{% if clip.status=='complete' %}<video class="clip-preview" controls preload="metadata"><source src="/clips/{{ clip.id }}/download/mp4" type="video/mp4"></video><div class="download-row"><a href="/clips/{{ clip.id }}/download/mp4">MP4 ↓</a><a href="/clips/{{ clip.id }}/download/srt">SRT ↓</a><a href="/clips/{{ clip.id }}/download/vtt">VTT ↓</a></div>{% endif %}
+<button class="button {% if clip.status=='complete' %}secondary{% else %}primary{% endif %}" {% if clip.status in ['queued','rendering'] %}disabled{% endif %}>{% if clip.status=='complete' %}Render again{% else %}Render vertical Short{% endif %}</button></form></article>
+{% endfor %}
+<section class="clip-card custom-card"><p class="eyebrow">YOUR CUT</p><h3>Add a custom moment</h3><form method="post" action="/projects/{{ project.id }}/clips" class="clip-form"><input type="hidden" name="csrf" value="{{ csrf }}"><label>Title<input name="title" maxlength="120" placeholder="Short title" required></label><div class="time-fields"><label>Start (sec)<input name="start_seconds" type="number" step="0.1" min="0" required></label><label>End (sec)<input name="end_seconds" type="number" step="0.1" min="0" required></label></div><button class="button secondary" {% if clips|length >= max_clips %}disabled{% endif %}>Add moment</button></form></section>
+</section>
+<aside class="transcript-pane"><div class="section-head"><div><p class="eyebrow">DEEPGRAM · {{ project.duration|duration }}</p><h2>Transcript</h2></div></div><div class="transcript-body">{{ transcript_text }}</div><p class="small muted">Transcript is stored locally with this project. Correct names and wording before publishing captions.</p></aside>
+</div>
+{% endif %}
+{% endblock %}
