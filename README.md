@@ -15,6 +15,9 @@ The app uses one background worker, one FFmpeg thread, low-bitrate mono MP3 for 
 Authenticate the VPS to GitHub first; do not paste a personal access token into a clone URL or shell history. With GitHub CLI already installed and authenticated, clone with `gh repo clone hananabdull746/deepgram-shorts-assistant`. Or configure an SSH deploy key and use the SSH clone URL. Then run the installer from the repository root:
 
 ```bash
+# use either the authenticated GitHub CLI:
+gh repo clone hananabdull746/deepgram-shorts-assistant
+# or an SSH deploy key:
 git clone git@github.com:hananabdull746/deepgram-shorts-assistant.git
 cd deepgram-shorts-assistant
 sudo bash ./install.sh

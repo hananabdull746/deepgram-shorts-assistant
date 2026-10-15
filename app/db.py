@@ -124,9 +124,22 @@ class Database:
         self.execute("UPDATE projects SET status='waiting_callback', deepgram_request_id=?, updated_at=? WHERE id=? AND status='transcribing'",
                      (request_id, int(time.time()), project_id))
 
-    def save_transcript(self, project_id: str, payload: dict[str, Any], duration: float, summary: str = "") -> None:
-        self.update_project(project_id, status="ready", transcript_json=json.dumps(payload), duration=duration,
-                            summary=summary, error=None)
+    def save_transcript(self, project_id: str, payload: dict[str, Any], duration: float,
+                        summary: str = "", clips: list[dict[str, Any]] | None = None) -> bool:
+        now = int(time.time())
+        with self.connect() as db:
+            updated = db.execute("""UPDATE projects SET status='ready', transcript_json=?, duration=?, summary=?,
+                                  error=NULL, updated_at=? WHERE id=? AND transcript_json IS NULL""",
+                                 (json.dumps(payload), duration, summary, now, project_id))
+            if updated.rowcount == 0:
+                return False
+            for clip in clips or []:
+                db.execute("""INSERT INTO clips
+                    (id,project_id,title,start_seconds,end_seconds,transcript,score,status,created_at,updated_at)
+                    VALUES(?,?,?,?,?,?,?,?,?,?)""",
+                    (clip["id"], project_id, clip["title"], clip["start_seconds"], clip["end_seconds"],
+                     clip.get("transcript", ""), int(clip.get("score", 0)), "queued", now, now))
+        return True
 
     def create_clip(self, values: dict[str, Any]) -> None:
         now = int(time.time())

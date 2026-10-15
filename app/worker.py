@@ -98,12 +98,10 @@ class Worker:
             return
         duration = float(duration or project.get("duration") or payload.get("metadata", {}).get("duration") or 0)
         candidates = suggest_highlights(payload, duration, limit=min(8, self.settings.max_clips_per_project))
-        self.db.save_transcript(project_id, payload, duration)
-        for candidate in candidates:
-            self.db.create_clip({"id": secrets.token_urlsafe(16), "project_id": project_id,
-                                 "title": candidate["title"], "start_seconds": candidate["start_seconds"],
-                                 "end_seconds": candidate["end_seconds"], "transcript": candidate["transcript"],
-                                 "score": candidate["score"]})
+        clip_rows = [{"id": secrets.token_urlsafe(16), "title": item["title"],
+                      "start_seconds": item["start_seconds"], "end_seconds": item["end_seconds"],
+                      "transcript": item["transcript"], "score": item["score"]} for item in candidates]
+        self.db.save_transcript(project_id, payload, duration, clips=clip_rows)
 
     def accept_callback(self, project_id: str, payload: dict[str, Any]) -> None:
         project = self.db.get_project(project_id)
